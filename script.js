@@ -3,34 +3,8 @@
 const canvas = document.getElementById('canvas'),
 	ctx = canvas.getContext('2d');
 
-let songTime = new Time(),
+let songTime = new DynamicTime(),
 	notes = [];
-/*function getLastStop(time, valueType) {
-	return stops.find((e, i, a) => (i + 1 == a.length) || (a[i + 1][valueType] >= time));
-}
-function getLastBpm(time, valueType) {
-	return bpmChanges.find((e, i, a) => (i + 1 == a.length) || (a[i + 1][valueType] >= time));
-}
-function secToBeat(sec) {
-	let b = getLastBpm(sec, 'sec');
-	let s = stops
-		.filter(({ sec: i }) => (i >= b.sec) && (i < sec))
-		.map(i => (i.sec + i.len > sec) ? (sec - i.sec) : i.len);
-	for (let i in s)
-		sec -= s[i];
-	return ((sec - b.sec) * b.bpm / 60) + b.beat;
-}
-function beatToSec(beat) {
-	let b = getLastBpm(beat, 'beat');
-	let x = ((beat - b.beat) / b.bpm * 60) + b.sec;
-	let s = stops
-		.filter(({ beat: i }) => (i >= b.beat) && (i < beat))
-		.map(i => i.len);
-	for (let i in s) {
-		x += s[i];
-	}
-	return x;
-}*/
 
 let step, draw;
 {
@@ -77,7 +51,7 @@ let step, draw;
 			);
 			ctx.fillRect(
 				5 * size,
-				(Time.beatToSec(i) - sec) * cMod * size,
+				(Time.convertTime('beat', 'sec', i) - sec) * cMod * size,
 				size * 4,
 				size / 4
 			);
@@ -127,7 +101,7 @@ let step, draw;
 		notes.forEach(renderNote);
 
 		ELEMS.fps.innerHTML = Math.round(1 / (sec - fpsC));
-		ELEMS.bpm.innerHTML = Time.getLastBpm('sec', sec).bpm;
+		ELEMS.bpm.innerHTML = Bpm.getLastBpm('sec', sec).bpm;
 		fpsC = sec;
 
 		ELEMS.sec.innerHTML = sec;

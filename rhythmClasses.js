@@ -4,17 +4,66 @@ let bpms = [];
 
 class Time {
 	static units = ['sec', 'beat'];
+	constructor(unit, time) {
+		this._units = {};
+		for (let u of Time.units)
+			this._units[u] = 0;
+		if (unit) {
+			Time.verifyUnit(unit);
+			this.setTime(unit, time);
+		}
+	}
+
+	getTime(unit) {
+		Time.verifyUnit(unit);
+		return this._units[unit];
+	}
+	setTime(unit, value) {
+		Time.verifyUnit(unit);
+		this._units[unit] = value;
+		for (let u of Time.units)
+			if (u != unit)
+				this._units[u] = Time.convertTime(unit, u, value);
+	}
+	get sec() { return this.getTime('sec'); }
+	get beat() { return this.getTime('beat'); }
+	set sec(value) { return this.setTime('sec', value); }
+	set beat(value) { return this.setTime('beat', value); }
+
+	static convertTime(inUnit, outUnit, value, bpmList = bpms, suppressWarn) {
+		Time.verifyUnit(inUnit, outUnit);
+		if (value == 0)
+			return 0;
+		if (inUnit == outUnit)
+			return value;
+
+		let lb = Bpm.getLastBpm(inUnit, value, bpmList, suppressWarn);
+
+		let out = (value - lb.getTime(inUnit));
+		switch (inUnit) { // TODO: deal with outunits
+			case 'sec':
+				out *= (lb.bpm / 60);
+				break;
+			case 'beat':
+				out /= (lb.bpm / 60);
+				break;
+		}
+		return out + lb.getTime(outUnit);
+	};
+
+	static verifyUnit() {
+		for (let unit of arguments)
+			if (!Time.units.includes(unit))
+				throw new TypeError(`Invalid unit '${unit}'`);
+	}
+}
+
+class DynamicTime extends Time {
 	constructor(unit, time, start = false, events = []) {
-		this._sec = 0;
-		this._beat = 0;
+		super(unit, time);
 		this._startTime = null;
 		this._autoEventChecker = null;
 		this._events = events;
-		if (unit)
-			if (Time.units.includes(unit))
-				this[unit] = time;
-			else
-				throw new TypeError(`Invalid unit '${unit}'`);
 		if (start)
 			this.start();
 		else
@@ -25,12 +74,11 @@ class Time {
 	}
 
 	when(unit, time, callback) {
-		if (!Time.units.includes(unit))
-			throw new TypeError(`Invalid unit '${unit}'`);
+		Time.verifyUnit(unit);
 		if (typeof time != 'number')
 			throw new TypeError(`time is type '${typeof time}' instead of 'number'`);
 
-		if (this._getUnit(unit) >= time)
+		if (this.getTime(unit) >= time)
 			this._checkEvents({ unit, time, callback });
 		else
 			this._events.push({ unit, time, callback });
@@ -40,17 +88,12 @@ class Time {
 			events = [events];
 		for (let i in events) {
 			let e = events[i];
-			if (this._getUnit(e.unit, true) >= e.time) {
+			if (this.getTime(e.unit, true) >= e.time) {
 				let params = {};
 				for (let u of Time.units) {
 					let unitInfo = {};
-					if (u == e.unit)
-						unitInfo.intendedTime = e.time;
-					else if (u == 'beat') // TODO: find a better way to do this that doesn't rely on hardcoded units
-						unitInfo.intendedTime = Time.secToBeat(e.time);
-					else if (u == 'sec')
-						unitInfo.intendedTime = Time.beatToSec(e.time);
-					unitInfo.currentTime = this._getUnit(u);
+					unitInfo.intendedTime = Time.convertTime(e.unit, u, e.time);
+					unitInfo.currentTime = this.getTime(u);
 					unitInfo.delay = unitInfo.currentTime - unitInfo.intendedTime;
 					params = Object.assign(params, { [u]: unitInfo });
 				}
@@ -79,61 +122,43 @@ class Time {
 		});
 	}
 
-	_getUnit(unit, suppressWarn, startTime = this._startTime) {
+	getTime(unit, suppressWarn, startTime = this._startTime) {
 		let addTime = 0;
 		if (startTime != null)
 			addTime = performance.now() / 1e3 - startTime;
-		if (unit == 'sec') // TODO: find a better way to do this that doesn't rely on hardcoded units
-			return this._sec + addTime;
-		else {
-			let a = Time.secToBeat(addTime, suppressWarn);
-			if (typeof a == 'number')
-				return this._beat + Time.secToBeat(addTime);
-			else
-				return;
-		}
+
+		let a = Time.convertTime('sec', unit, addTime, suppressWarn);
+		if (typeof a == 'number')
+			return super.getTime(unit) + a;
+		else
+			return a;
 	}
-	get sec() { return this._getUnit('sec'); }
-	get beat() { return this._getUnit('beat'); }
-	set sec(value) {
+	setTime(unit, value) {
 		if (this._startTime != null) {
-			console.warn(`Sec set while running, this can cause precision issues. This should be sceduled instead`);
+			console.warn(`Set time while running, this can cause precision issues. This should be sceduled instead`);
 			this._startTime = performance.now() / 1e3;
 		}
-		this._sec = value;
-		this._beat = Time.secToBeat(value);
+
+		super.setTime(unit, value);
 
 		this._checkEvents();
 	}
-	set beat(value) {
-		if (this._startTime != null) {
-			console.warn(`Beat set while running, this can cause precision issues. This should be sceduled instead`);
-			this._startTime = performance.now() / 1e3;
-		}
-		this._beat = value;
-		this._sec = Time.beatToSec(value);
 
-		this._checkEvents();
-	}
 	get running() {
-		return this._startTime;
+		return !!this._startTime;
+	}
+}
+
+class Bpm extends Time {
+	constructor(bpm, unit, time) {
+		super(unit, time);
+		if (typeof bpm != 'number')
+			throw new TypeError(`bpm is type '${typeof bpm}' instead of 'number'`);
+		this.bpm = bpm;
 	}
 
-	static secToBeat(sec, bpmList = bpms, suppressWarn) {
-		if (sec == 0)
-			return 0;
-		let lb = Time.getLastBpm('sec', sec, bpmList, suppressWarn);
-		return (sec - lb.sec) * (lb.bpm / 60) + lb.beat;
-	}
-	static beatToSec(beat, bpmList = bpms, suppressWarn) {
-		if (beat == 0)
-			return 0;
-		let lb = Time.getLastBpm('beat', beat, bpmList, suppressWarn);
-		return (beat - lb.beat) / (lb.bpm / 60) + lb.sec;
-	}
 	static getLastBpm(unit, time, bpmList = bpms, suppressWarn) {
-		if (!Time.units.includes(unit))
-			throw new TypeError(`Invalid unit '${unit}'`);
+		Time.verifyUnit(unit);
 		if (!Array.isArray(bpmList))
 			throw new TypeError(`bpms is type '${typeof bpmList}' instead of 'Array'`);
 		let sortedBpmList = bpmList.sort((a, b) => b[unit] - a[unit]);
@@ -155,15 +180,6 @@ class Time {
 	}
 }
 
-class Bpm extends Time {
-	constructor(bpm, unit, time) {
-		super(unit, time);
-		if (typeof bpm != 'number')
-			throw new TypeError(`bpm is type '${typeof bpm}' instead of 'number'`);
-		this.bpm = bpm;
-	}
-}
-
 class Note extends Time {
 	constructor(unit, time, { type, column }, endUnit, endTime) {
 		super(unit, time);
@@ -173,11 +189,20 @@ class Note extends Time {
 			this.endTime = new Time(endUnit, endTime);
 	}
 
-	get secLength() { return this.endTime && this.endTime.sec - this.sec; }
-	get beatLength() { return this.endTime && this.endTime.beat - this.beat; }
-	get secEnd() { return this.endTime && this.endTime.sec; }
-	get beatEnd() { return this.endTime && this.endTime.beat; }
+	getEndTime(unit) {
+		if (this.endTime)
+			return this.endTime.getTime(unit);
+	}
+	setEndTime(unit, value) {
+		if (this.endTime)
+			this.endTime.setTime(unit, value);
+	}
 
-	set secEnd(val) { this.endTime && (this.endTime.sec = val); }
-	set beatEnd(val) { this.endTime && (this.endTime.beat = val); }
+	get secLength() { return this.getEndTime('sec') - this.sec; }
+	get beatLength() { return this.getEndTime('beat') - this.beat; }
+	get secEnd() { return this.getEndTime('beat'); }
+	get beatEnd() { return this.getEndTime('beat'); }
+
+	set secEnd(val) { setEndTime('sec', val); }
+	set beatEnd(val) { setEndTime('beat', val); }
 }
