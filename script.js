@@ -33,8 +33,7 @@ let step, draw;
 			beat = songTime.beat;
 		const
 			size = 32, //temporary render variable
-			xMod = 4, //temporary render variable
-			cMod = 480 / 60; //temporary render variable
+			xMod = 4; //temporary render variable
 		ctx.fillStyle = "#000000";
 		ctx.fillRect(0, 0, 640, 480); //temporary background
 		ctx.fillStyle = "#666666";
@@ -46,12 +45,6 @@ let step, draw;
 			ctx.fillRect(
 				0 * size,
 				(i - beat) * xMod * size,
-				size * 4,
-				size / 4
-			);
-			ctx.fillRect(
-				5 * size,
-				(Time.convertTime('beat', 'sec', i) - sec) * cMod * size,
 				size * 4,
 				size / 4
 			);
@@ -90,12 +83,7 @@ let step, draw;
 				note.column * size,
 				(note.beat - beat) * xMod * size,
 				size,
-				(note.beatLength * xMod * size || 0) + size);
-			ctx.fillRect(
-				(5 + note.column) * size,
-				(note.sec - sec) * cMod * size,
-				size,
-				(note.secLength * cMod * size || 0) + size
+				(note.beatLength * xMod * size || 0) + size
 			);
 		}
 		notes.forEach(renderNote);
