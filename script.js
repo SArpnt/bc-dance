@@ -150,7 +150,13 @@ document.getElementById('startButton').onclick = async function () {
 		}
 	}
 	console.log("Got songData:", songData);
-	songData.audio = new Audio(`./songs/${songName}.mp3`);
+	let audio = new Audio(`./songs/${songName}.mp3`);
+	audio.volume = 0;
+	audio.play();
+	audio.pause();
+	audio.currentTime = 0;
+	audio.volume = 1;
+	songData.audio = audio;
 
 	bpms = [];
 	notes = [];
