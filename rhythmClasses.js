@@ -3,7 +3,6 @@
 let bpms = [];
 
 class Time {
-	static units = ['sec', 'beat'];
 	constructor(unit, time) {
 		this._units = {};
 		for (let u of Time.units)
@@ -57,6 +56,7 @@ class Time {
 				throw new TypeError(`Invalid unit '${unit}'`);
 	}
 }
+Time.units = ['sec', 'beat'];
 
 class DynamicTime extends Time {
 	constructor(unit, time, start = false, events = []) {
