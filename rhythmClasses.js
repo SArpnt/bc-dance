@@ -37,6 +37,8 @@ class Time {
 			return value;
 
 		let lb = Bpm.getLastBpm(inUnit, value, bpmList, suppressWarn);
+		if (lb instanceof Error)
+			return lb;
 
 		let out = (value - lb.getTime(inUnit));
 		switch (inUnit) { // TODO: deal with outunits

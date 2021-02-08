@@ -128,11 +128,11 @@ function press(v) {
 			let input = {
 				pressed: v,
 				type: KEYMAP[event.code],
-				timeStamp: event.time,
+				timeStamp: event.timeStamp,
 			};
 			if (songTime.running) {
 				let t = songTime.startTime;
-				t.sec = event.time / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
+				t.sec = event.timeStamp / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
 				input.time = t;
 			}
 			keyInput[input.type] = input.pressed;
