@@ -59,9 +59,12 @@ function parseSM(sm) {
 			case '#NOTES':
 				let chart = smLine[6].split(',').map(m => m.trim());
 				for (let measure in chart) {
-					if (chart[measure].length % 4)
+					if (chart[measure].length % LANES)
 						throw `Invalid length on measure ${measure}, length is ${chart[measure].length}, full string: ${chart[measure]}`;
-					chart[measure] = chart[measure].match(/(.{4})/g);
+					let split = [];
+					for (let i = 0; i < chart[measure].length; i += LANES)
+						split.push(chart[measure].substr(i, LANES));
+					chart[measure] = split;
 				}
 				songData.charts[smLine[3]] = chart;
 				break;
@@ -79,9 +82,9 @@ function parseSM(sm) {
 		for (let measure in chart) {
 			let noteInterval = chart[measure].length;
 			for (let lineNum in chart[measure]) {
-				let line = chart[measure][lineNum];
-				let note = [{}, {}, {}, {}];
-				let b = measure * 4 + lineNum / noteInterval * 4; // for efficiency
+				let line = chart[measure][lineNum],
+					note = [{}, {}, {}, {}],
+					beat = measure * 4 + lineNum / noteInterval * 4;
 				for (let column = 0; column < note.length; column++) {
 					switch (line[column]) {
 						case '3': // hold end
@@ -89,7 +92,7 @@ function parseSM(sm) {
 								throw `Hold end without any hold before at measure ${measure}, line ${lineNum}`;
 							{
 								let i = notes[currentHolds[column]];
-								i.beatEnd = b;
+								i.beatEnd = beat;
 							}
 							// add more hold end script
 							currentHolds[column] = null;
@@ -107,7 +110,7 @@ function parseSM(sm) {
 						default:
 							throw `Invalid note type ${line[column]} at measure ${measure}, line ${lineNum}`;
 					}
-					note[column].beat = b;
+					note[column].beat = beat;
 					note[column].column = column;
 				}
 				notes = notes.concat(note);

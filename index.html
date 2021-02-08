@@ -1,21 +1,28 @@
 <html>
 
 <head>
+	<style>
+		canvas {
+			background-color: grey;
+		}
+	</style>
 </head>
 
 <body>
-	<canvas id="canvas" width="640" height="480"></canvas>
+	<canvas id="bc-dance" width="640" height="480"></canvas>
 	<p>
 		<div>bpm: <span id="bpm"></span></div>
 		<div>beat: <span id="beat"></span></div>
 		<div>sec: <span id="sec"></span></div>
 		<div>FPS: <span id="fps"></span></div>
-		<div>TPS: <span id="tps"></span></div>
 	</p>
 	<input type="button" id="startButton" value="Start">
+
+	<script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+	<script src="rhythmClasses.js"></script>
+	<script src="hitreg.js"></script>
+	<script src="parseSM.js"></script>
+	<script src="script.js"></script>
 </body>
-<script src="rhythmClasses.js"></script>
-<script src="parseSM.js"></script>
-<script src="script.js"></script>
 
 </html>

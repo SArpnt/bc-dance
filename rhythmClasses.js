@@ -107,19 +107,20 @@ class DynamicTime extends Time {
 		this._startTime = performance.now() / 1e3;
 
 		if (autoCheck)
-			this._autoEventChecker = setInterval(_ => this._checkEvents(), 0); // TODO: decide on reasonable number for this
+			this._autoEventChecker = setInterval(_ => this._checkEvents(), DynamicTime.eventCheckRate);
 	}
 	stop(unit, time) {
 		if (unit == undefined && time == undefined) {
 			unit = 'sec';
 			time = this.sec;
 		}
-		this.when(unit, time, function _stop({ sec: { intendedTime } }) {
-			this._startTime = null;
-			this._sec = intendedTime;
+		this.when(unit, time, this._stopEvent);
+	}
+	_stopEvent({ sec: { intendedTime } }) {
+		this._startTime = null;
+		this.sec = intendedTime;
 
-			clearInterval(this._autoEventChecker);
-		});
+		clearInterval(this._autoEventChecker);
 	}
 
 	getTime(unit, suppressWarn, startTime = this._startTime) {
@@ -137,6 +138,62 @@ class DynamicTime extends Time {
 		if (this._startTime != null) {
 			console.warn(`Set time while running, this can cause precision issues. This should be sceduled instead`);
 			this._startTime = performance.now() / 1e3;
+		}
+
+		super.setTime(unit, value);
+
+		this._checkEvents();
+	}
+
+	get running() {
+		return !!this._startTime;
+	}
+	get startTime() {
+		return new Time('sec', this._startTime);
+	}
+}
+DynamicTime.eventCheckRate = 0; // TODO: decide on reasonable number for this
+
+class AudioTime extends DynamicTime {
+	constructor(audio, unit, time, start, events) {
+		this.muted = audio.muted;
+		this.audio = audio;
+		super(unit, time, start, events);
+	}
+
+	get audio() { return this._audio; }
+	set audio(audio) {
+		if (typeof audio == 'string')
+			audio = new Audio(audio);
+		this._audio = audio;
+
+		this._audio.muted = true;
+		this._audio.play();
+	}
+
+	start(autoCheck = true) {
+		this._startTime = performance.now() / 1e3;
+		this._audio.currentTime = this._startTime;
+		this._audio.muted = this.muted;
+
+		if (autoCheck)
+			this._autoEventChecker = setInterval(_ => this._checkEvents(), DynamicTime.eventCheckRate);
+	}
+	_stopEvent({ sec: { intendedTime } }) {
+		this._startTime = null;
+		this.sec = intendedTime;
+
+		clearInterval(this._autoEventChecker);
+	}
+	getTime(unit) {
+		Time.verifyUnit(unit);
+		return this._units[unit];
+	}
+	setTime(unit, value) {
+		if (this._startTime != null) {
+			console.warn(`Set time while running, this can cause precision issues. This should be sceduled instead`);
+			this._startTime = performance.now() / 1e3;
+			this._audio.currentTime = this._startTime;
 		}
 
 		super.setTime(unit, value);

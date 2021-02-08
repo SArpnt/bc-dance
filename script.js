@@ -1,51 +1,42 @@
 "use strict";
 
-const canvas = document.getElementById('canvas'),
-	ctx = canvas.getContext('2d');
+const LANES = 4;
+
+createjs.Ticker.timingMode = createjs.Ticker.RAF;
+const stage = new createjs.Stage("bc-dance"),
+	tempShape = new createjs.Shape(); // TODO: get rid of this and use createjs properly
+stage.addChild(tempShape);
 
 let songTime = new DynamicTime(),
 	notes = [];
 
-let step, draw;
+let draw;
 {
 	const ELEMS = {
 		bpm: document.getElementById('bpm'),
 		beat: document.getElementById('beat'),
 		sec: document.getElementById('sec'),
 		fps: document.getElementById('fps'),
-		tps: document.getElementById('tps'),
-	};
-	let
-		tpsC = 0,
-		fpsC = 0;
-
-	step = function step() {
-		window.setTimeout(step, 0);
-		let now = songTime.sec;
-		ELEMS.tps.innerHTML = Math.round(1 / (now - tpsC));
-		tpsC = now;
 	};
 
 	draw = function draw() {
-		requestAnimationFrame(draw);
 		let
 			sec = songTime.sec,
 			beat = songTime.beat;
 		const
 			size = 32, //temporary render variable
 			xMod = 4; //temporary render variable
-		ctx.fillStyle = "#000000";
-		ctx.fillRect(0, 0, 640, 480); //temporary background
-		ctx.fillStyle = "#666666";
+		tempShape.graphics.beginFill("#000000").drawRect(0, 0, 640, 480); //temporary background
+		tempShape.graphics.beginFill("#666666");
 		for ( //bar lines
 			let i = Math.ceil(beat / 4) * 4;
 			i < (Math.ceil(beat / 4) + 8) * 4;
 			i += 4
 		) {
-			ctx.fillRect(
+			tempShape.graphics.drawRect(
 				0 * size,
 				(i - beat) * xMod * size,
-				size * 4,
+				size * LANES,
 				size / 4
 			);
 		}
@@ -62,9 +53,10 @@ let step, draw;
 			192: '#00ffff',
 			def: '#888888',
 		};
-		function renderNote(note) { //notes
+		function renderNote(note) {
+			let color;
 			if (note.sec - sec > 0)
-				ctx.fillStyle = {
+				color = {
 					'M': _ => '#880000',
 					'1': function () {
 						for (let timing in noteTimings)
@@ -77,21 +69,21 @@ let step, draw;
 					'4': _ => '#00ff00',
 				}[note.type]();
 			else
-				ctx.fillStyle = '#ff00ff';
+				color = '#ff00ff';
 
-			ctx.fillRect(
-				note.column * size,
-				(note.beat - beat) * xMod * size,
-				size,
-				(note.beatLength * xMod * size || 0) + size
-			);
+			tempShape.graphics
+				.beginFill(color)
+				.drawRect(
+					note.column * size,
+					(note.beat - beat) * xMod * size,
+					size,
+					(note.beatLength * xMod * size || 0) + size
+				);
 		}
 		notes.forEach(renderNote);
 
-		ELEMS.fps.innerHTML = Math.round(1 / (sec - fpsC));
+		ELEMS.fps.innerHTML = createjs.Ticker.getMeasuredFPS();
 		ELEMS.bpm.innerHTML = Bpm.getLastBpm('sec', sec).bpm;
-		fpsC = sec;
-
 		ELEMS.sec.innerHTML = sec;
 		ELEMS.beat.innerHTML = beat;
 	};
@@ -103,28 +95,38 @@ function startGame({ audio, offset }) {
 	else
 		console.warn(`No audio found`);
 	songTime.sec = offset;
+	hitreg.noteTestBegin = 0;
 	songTime.start();
-	step();
-	requestAnimationFrame(draw);
+	createjs.Ticker.on('tick', draw);
 }
 
+const KEYMAP = {
+	ArrowUp: 'up',
+	ArrowDown: 'down',
+	ArrowLeft: 'left',
+	ArrowRight: 'right',
+};
 let keyInput = {
 	up: false,
 	down: false,
 	left: false,
-	right: false
+	right: false,
 };
 function press(v) {
-	return function (key) {
-		switch (key.code) {
-			case "ArrowUp":
-				keyInput.up = v; break;
-			case "ArrowDown":
-				keyInput.down = v; break;
-			case "ArrowLeft":
-				keyInput.left = v; break;
-			case "ArrowRight":
-				keyInput.right = v; break;
+	return function _press(event) {
+		if (!event.repeat) {
+			let input = {
+				pressed: v,
+				type: KEYMAP[event.code],
+				timeStamp: event.time,
+			};
+			if (songTime.running) {
+				let t = songTime.startTime;
+				t.sec = event.time / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
+				input.time = t;
+			}
+			keyInput[input.type] = input.pressed;
+			hitreg.handleInput(input);
 		}
 	};
 }
@@ -181,5 +183,3 @@ document.getElementById('startButton').onclick = async function () {
 	};
 	songData.audio.addEventListener('canplaythrough', sg);
 };
-ctx.fillStyle = "grey";
-ctx.fillRect(0, 0, 640, 480);
