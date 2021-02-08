@@ -4,8 +4,10 @@ let bpms = [];
 
 class Time {
 	constructor(unit, time) {
+		this._units = {};
 		if (unit instanceof Time)
-			this._units = unit._units;
+			for (let u of Time.units)
+				this._units[u] = unit.getTime(u);
 		else {
 			this._units = {};
 			for (let u of Time.units)

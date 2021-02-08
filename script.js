@@ -20,26 +20,24 @@ let draw;
 	};
 
 	draw = function draw() {
-		let
-			sec = songTime.sec,
-			beat = songTime.beat;
+		let curTime = new Time(songTime);
 		const
 			size = 32, // temporary render variable
 			xMod = 4; // temporary render variable
 
-		hitreg.calculateMissed(sec);
+		hitreg.calculateMissed(curTime.sec);
 
 		tempShape.graphics.clear();
 		tempShape.graphics.beginFill("#000").drawRect(0, 0, 640, 480); // temporary background
 		tempShape.graphics.beginFill("#666");
 		for ( // bar lines
-			let i = Math.ceil(beat / 4) * 4;
-			i < (Math.ceil(beat / 4) + 8) * 4;
+			let i = Math.ceil(curTime.beat / 4) * 4;
+			i < (Math.ceil(curTime.beat / 4) + 8) * 4;
 			i += 4
 		) {
 			tempShape.graphics.drawRect(
 				0 * size,
-				(i - beat) * xMod * size,
+				(i - curTime.beat) * xMod * size,
 				size * LANES,
 				size / 4
 			);
@@ -57,43 +55,44 @@ let draw;
 			192: '#0ff',
 			def: '#888',
 		};
-		function renderNote(note, noteType = note.type, noteLength = note.beatLength) {
-			if (note.sec - sec > 0)
-				tempShape.graphics.beginFill({
-					'M': _ => '#700',
-					'1': function () {
-						for (let timing in noteTimings)
-							if ((note.beat + 1e-4) % (4 / timing) < 2e-4)
-								return noteTimings[timing];
+		function renderNote(note, notePos = note.beat - curTime.beat, noteType = note.type, noteLength = note.beatLength) {
+			tempShape.graphics.beginFill('#f0f')
+			tempShape.graphics.beginFill({
+				'M': _ => '#700',
+				'1': function () {
+					for (let timing in noteTimings)
+						if ((note.beat + 1e-4) % (4 / timing) < 2e-4)
+							return noteTimings[timing];
 
-						return noteTimings.def;
-					},
-					'2': _ => '#0ff',
-					'4': _ => '#0f0',
-				}[noteType]());
-			else
-				tempShape.graphics.beginFill('#f0f');
+					return noteTimings.def;
+				},
+				'2': _ => '#0ff',
+				'4': _ => '#0f0',
+				'receptor': _ => `hsl(0, 0%, ${Math.max(1 - (curTime.beat % 1) * 2, 0) * 12.5 + 37.5}%)`,
+			}[noteType]());
 
 			tempShape.graphics.drawRoundRect(
 				note.column * size,
-				((note.beat - beat) * xMod * size) + (noteLength ? size / 2 : 0),
+				(notePos * xMod * size) + (noteLength ? size / 2 : 0),
 				size,
 				((noteLength * xMod * size) || 0) + (noteLength ? size / 2 : size),
 				size / 4,
 			);
 			if (noteType == '2' || noteType == '4')
-				renderNote(note, '1', false);
+				renderNote(note, undefined, '1', false);
 		}
+		for (let c = 0; c < 4; c++)
+			renderNote({ column: c }, 0, 'receptor');
 		notes.filter(n =>
-			(n.endTime ?? n).beat - songTime.beat > -1 &&
-			n.beat - songTime.beat < 16
+			(n.endTime ?? n).beat - curTime.beat > -1 &&
+			n.beat - curTime.beat < 16
 		).forEach(n => renderNote(n));
 
 		stage.update();
 		ELEMS.fps.innerHTML = createjs.Ticker.getMeasuredFPS();
-		ELEMS.bpm.innerHTML = Bpm.getLastBpm('sec', sec).bpm;
-		ELEMS.sec.innerHTML = sec;
-		ELEMS.beat.innerHTML = beat;
+		ELEMS.bpm.innerHTML = Bpm.getLastBpm('sec', curTime.sec).bpm;
+		ELEMS.sec.innerHTML = curTime.sec;
+		ELEMS.beat.innerHTML = curTime.beat;
 	};
 }
 
@@ -130,30 +129,28 @@ let curInput = {
 	up: false,
 	right: false,
 };
-function press(v) {
-	return function _press(event) {
-		if (!event.repeat) {
-			let input = {
-				pressed: v,
-				type: KEYMAP[event.code],
-				timeStamp: event.timeStamp,
-			};
-			if (songTime.running) {
-				let t = songTime.startTime;
-				t.sec = event.timeStamp / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
-				input.time = t;
-			} else
-				input.time = new Time(songTime);
-			curInput[input.type] = input.pressed;
-			input = Object.assign(input, INPUT_PROPS[input.type]);
+function press(event) {
+	if (!event.repeat) {
+		let input = {
+			pressed: event.type == 'keydown',
+			type: KEYMAP[event.code],
+			timeStamp: event.timeStamp,
+		};
+		if (songTime.running) {
+			let t = songTime.startTime;
+			t.sec = event.timeStamp / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
+			input.time = t;
+		} else
+			input.time = new Time(songTime);
+		curInput[input.type] = input.pressed;
+		input = Object.assign(input, INPUT_PROPS[input.type]);
 
-			if (input.column)
-				hitreg.handleInput(input);
-		}
-	};
+		if (input.column)
+			hitreg.handleInput(input);
+	}
 }
-addEventListener("keydown", press(true));
-addEventListener("keyup", press(false));
+addEventListener("keydown", press);
+addEventListener("keyup", press);
 
 /**
  * start song
