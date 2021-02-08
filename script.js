@@ -24,11 +24,13 @@ let draw;
 			sec = songTime.sec,
 			beat = songTime.beat;
 		const
-			size = 32, //temporary render variable
-			xMod = 4; //temporary render variable
-		tempShape.graphics.beginFill("#000000").drawRect(0, 0, 640, 480); //temporary background
+			size = 32, // temporary render variable
+			xMod = 4; // temporary render variable
+
+		tempShape.graphics.clear();
+		tempShape.graphics.beginFill("#000000").drawRect(0, 0, 640, 480); // temporary background
 		tempShape.graphics.beginFill("#666666");
-		for ( //bar lines
+		for ( // bar lines
 			let i = Math.ceil(beat / 4) * 4;
 			i < (Math.ceil(beat / 4) + 8) * 4;
 			i += 4
@@ -53,10 +55,9 @@ let draw;
 			192: '#00ffff',
 			def: '#888888',
 		};
-		function renderNote(note) {
-			let color;
+		function renderNote(note, noteType = note.type, noteLength = note.beatLength) {
 			if (note.sec - sec > 0)
-				color = {
+				tempShape.graphics.beginFill({
 					'M': _ => '#880000',
 					'1': function () {
 						for (let timing in noteTimings)
@@ -67,21 +68,26 @@ let draw;
 					},
 					'2': _ => '#00ffff',
 					'4': _ => '#00ff00',
-				}[note.type]();
+				}[noteType]());
 			else
-				color = '#ff00ff';
+				tempShape.graphics.beginFill('#ff00ff');
 
-			tempShape.graphics
-				.beginFill(color)
-				.drawRect(
-					note.column * size,
-					(note.beat - beat) * xMod * size,
-					size,
-					(note.beatLength * xMod * size || 0) + size
-				);
+			tempShape.graphics.drawRoundRect(
+				note.column * size,
+				((note.beat - beat) * xMod * size) + (noteLength ? size / 2 : 0),
+				size,
+				((noteLength * xMod * size) || 0) + size,
+				size / 4,
+			);
+			if (noteType == '2' || noteType == '4')
+				renderNote(note, '1', false);
 		}
-		notes.forEach(renderNote);
+		notes.filter(n =>
+			(n.endTime ?? n).beat - songTime.beat > -1 &&
+			n.beat - songTime.beat < 16
+		).forEach(n => renderNote(n));
 
+		stage.update();
 		ELEMS.fps.innerHTML = createjs.Ticker.getMeasuredFPS();
 		ELEMS.bpm.innerHTML = Bpm.getLastBpm('sec', sec).bpm;
 		ELEMS.sec.innerHTML = sec;
@@ -99,6 +105,10 @@ function startGame({ audio, offset }) {
 	songTime.start();
 	createjs.Ticker.on('tick', draw);
 }
+
+/**
+ * Input
+ */
 
 const KEYMAP = {
 	ArrowUp: 'up',
@@ -133,6 +143,10 @@ function press(v) {
 addEventListener("keydown", press(true));
 addEventListener("keyup", press(false));
 
+/**
+ * start song
+ */
+
 document.getElementById('startButton').onclick = async function () {
 	this.disabled = true;
 
@@ -153,11 +167,6 @@ document.getElementById('startButton').onclick = async function () {
 	}
 	console.log("Got songData:", songData);
 	let audio = new Audio(`./songs/${songName}.mp3`);
-	audio.volume = 0;
-	audio.play();
-	audio.pause();
-	audio.currentTime = 0;
-	audio.volume = 1;
 	songData.audio = audio;
 
 	bpms = [];
@@ -182,10 +191,11 @@ document.getElementById('startButton').onclick = async function () {
 		notes.push(nNote);
 	}
 
-	let sg;
-	sg = function sg() {
-		songData.audio.removeEventListener('canplaythrough', sg);
+	audio.volume = 0;
+	audio.play().then(function sg() {
+		audio.pause();
+		audio.currentTime = 0;
+		audio.volume = 1;
 		startGame(songData);
-	};
-	songData.audio.addEventListener('canplaythrough', sg);
+	});
 };
