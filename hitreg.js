@@ -44,18 +44,6 @@ let hitreg = new function HitregNamespace() {
 		else if (typeof end != 'number')
 			start = currentTime + hitreg.timingWindows.miss.sec;
 
-		/*let filter;
-		if (startInclu) {
-			if (endInclu)
-				filter = n => n.sec >= start && n.sec <= end;
-			else
-				filter = n => n.sec >= start && n.sec < end;
-		} else {
-			if (endInclu)
-				filter = n => n.sec > start && n.sec <= end;
-			else
-				filter = n => n.sec > start && n.sec < end;
-		}*/
 		return arr.filter(n =>
 			(startInclu ? n.sec >= start : n.sec > start) &&
 			(endInclu ? n.sec <= end : n.sec < end)
@@ -76,7 +64,7 @@ let hitreg = new function HitregNamespace() {
 			hitreg.hitNote(note, 'miss');*/
 	};
 	/**
-	 * 
+	 * @param {Object} input
 	 * @param {boolean} input.pressed
 	 * @param {string} input.type
 	 * @param {Time} input.time

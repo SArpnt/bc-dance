@@ -7,7 +7,7 @@ const stage = new createjs.Stage("bc-dance"),
 	tempShape = new createjs.Shape(); // TODO: get rid of this and use createjs properly
 stage.addChild(tempShape);
 
-let songTime = new DynamicTime(),
+let songTime = new AudioTime(),
 	notes = [];
 
 let draw;
@@ -46,21 +46,21 @@ let draw;
 		}
 
 		const noteTimings = {
-			4: '#ff0000',
-			8: '#0000ff',
-			12: '#8800ff',
-			16: '#00ff00',
-			24: '#8800ff',
-			32: '#ffff00',
-			48: '#8800ff',
-			64: '#00ffff',
-			192: '#00ffff',
-			def: '#888888',
+			4: '#f00',
+			8: '#00f',
+			12: '#80f',
+			16: '#0f0',
+			24: '#80f',
+			32: '#ff0',
+			48: '#80f',
+			64: '#0ff',
+			192: '#0ff',
+			def: '#888',
 		};
 		function renderNote(note, noteType = note.type, noteLength = note.beatLength) {
 			if (note.sec - sec > 0)
 				tempShape.graphics.beginFill({
-					'M': _ => '#880000',
+					'M': _ => '#700',
 					'1': function () {
 						for (let timing in noteTimings)
 							if ((note.beat + 1e-4) % (4 / timing) < 2e-4)
@@ -68,17 +68,17 @@ let draw;
 
 						return noteTimings.def;
 					},
-					'2': _ => '#00ffff',
-					'4': _ => '#00ff00',
+					'2': _ => '#0ff',
+					'4': _ => '#0f0',
 				}[noteType]());
 			else
-				tempShape.graphics.beginFill('#ff00ff');
+				tempShape.graphics.beginFill('#f0f');
 
 			tempShape.graphics.drawRoundRect(
 				note.column * size,
 				((note.beat - beat) * xMod * size) + (noteLength ? size / 2 : 0),
 				size,
-				((noteLength * xMod * size) || 0) + size,
+				((noteLength * xMod * size) || 0) + (noteLength ? size / 2 : size),
 				size / 4,
 			);
 			if (noteType == '2' || noteType == '4')
@@ -102,7 +102,7 @@ function startGame({ audio, offset }) {
 		audio.play();
 	else
 		console.warn(`No audio found`);
-	songTime.sec = offset;
+	songTime.offset = offset;
 	hitreg.ntb = -Infinity;
 	songTime.start();
 	createjs.Ticker.on('tick', draw);
@@ -178,7 +178,8 @@ document.getElementById('startButton').onclick = async function () {
 	}
 	console.log("Got songData:", songData);
 	let audio = new Audio(`./songs/${songName}.mp3`);
-	songData.audio = audio;
+	audio.playbackRate = 1;
+	songTime.audio = songData.audio = audio;
 
 	bpms = [];
 	notes = [];
@@ -202,14 +203,9 @@ document.getElementById('startButton').onclick = async function () {
 		notes.push(nNote);
 	}
 
-	audio.volume = 0;
 	audio.play().then(function _a() {
-		audio.pause();
-		audio.currentTime = 0;
-		audio.volume = 1;
 		audio.addEventListener('canplaythrough', function _b() {
 			startGame(songData);
 		});
-		audio.load();
 	});
 };
