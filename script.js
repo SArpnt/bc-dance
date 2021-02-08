@@ -27,6 +27,8 @@ let draw;
 			size = 32, // temporary render variable
 			xMod = 4; // temporary render variable
 
+		hitreg.calculateMissed(sec);
+
 		tempShape.graphics.clear();
 		tempShape.graphics.beginFill("#000000").drawRect(0, 0, 640, 480); // temporary background
 		tempShape.graphics.beginFill("#666666");
@@ -101,7 +103,7 @@ function startGame({ audio, offset }) {
 	else
 		console.warn(`No audio found`);
 	songTime.sec = offset;
-	hitreg.noteTestBegin = 0;
+	hitreg.ntb = -Infinity;
 	songTime.start();
 	createjs.Ticker.on('tick', draw);
 }
@@ -116,7 +118,13 @@ const KEYMAP = {
 	ArrowLeft: 'left',
 	ArrowRight: 'right',
 };
-let keyInput = {
+const INPUT_PROPS = {
+	up: { column: 3 },
+	down: { column: 2 },
+	left: { column: 1 },
+	right: { column: 4 },
+};
+let curInput = {
 	up: false,
 	down: false,
 	left: false,
@@ -135,8 +143,11 @@ function press(v) {
 				t.sec = event.timeStamp / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
 				input.time = t;
 			}
-			keyInput[input.type] = input.pressed;
-			hitreg.handleInput(input);
+			curInput[input.type] = input.pressed;
+			input = Object.assign(input, INPUT_PROPS[input.type]);
+
+			if (input.column)
+				hitreg.handleInput(input);
 		}
 	};
 }
@@ -192,10 +203,13 @@ document.getElementById('startButton').onclick = async function () {
 	}
 
 	audio.volume = 0;
-	audio.play().then(function sg() {
+	audio.play().then(function _a() {
 		audio.pause();
 		audio.currentTime = 0;
 		audio.volume = 1;
-		startGame(songData);
+		audio.addEventListener('canplaythrough', function _b() {
+			startGame(songData);
+		});
+		audio.load();
 	});
 };
