@@ -113,21 +113,21 @@ function startGame({ audio, offset }) {
  */
 
 const KEYMAP = {
-	ArrowUp: 'up',
-	ArrowDown: 'down',
 	ArrowLeft: 'left',
+	ArrowDown: 'down',
+	ArrowUp: 'up',
 	ArrowRight: 'right',
 };
 const INPUT_PROPS = {
-	up: { column: 3 },
-	down: { column: 2 },
-	left: { column: 1 },
-	right: { column: 4 },
+	left: { column: 0 },
+	down: { column: 1 },
+	up: { column: 2 },
+	right: { column: 3 },
 };
 let curInput = {
-	up: false,
-	down: false,
 	left: false,
+	down: false,
+	up: false,
 	right: false,
 };
 function press(v) {
@@ -142,7 +142,8 @@ function press(v) {
 				let t = songTime.startTime;
 				t.sec = event.timeStamp / 1e3 - t.sec; // this is kinda ugly but it prevents having to make a new Time
 				input.time = t;
-			}
+			} else
+				input.time = new Time(songTime);
 			curInput[input.type] = input.pressed;
 			input = Object.assign(input, INPUT_PROPS[input.type]);
 

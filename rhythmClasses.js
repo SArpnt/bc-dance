@@ -4,12 +4,16 @@ let bpms = [];
 
 class Time {
 	constructor(unit, time) {
-		this._units = {};
-		for (let u of Time.units)
-			this._units[u] = 0;
-		if (unit) {
-			Time.verifyUnit(unit);
-			this.setTime(unit, time);
+		if (unit instanceof Time)
+			this._units = unit._units;
+		else {
+			this._units = {};
+			for (let u of Time.units)
+				this._units[u] = 0;
+			if (unit != undefined) {
+				Time.verifyUnit(unit);
+				this.setTime(unit, time);
+			}
 		}
 	}
 

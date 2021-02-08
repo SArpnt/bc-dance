@@ -77,13 +77,14 @@ let hitreg = new function HitregNamespace() {
 	 * @param {number} input.timestamp
 	 */
 	hitreg.handleInput = function (input) {
-		hitreg.calculateMissed(input.time);
+		if (input.pressed) {
+			hitreg.calculateMissed(input.time);
 
-		for (let note of hitreg.getNoteRange(input.time)) {
-			if (input.column == note.column) {
-				hitreg.hitNote(hitreg.getTimingWindow(note, input.time), note);
-				break;
-			}
+			for (let note of hitreg.getNoteRange(input.time))
+				if (input.column == note.column) {
+					hitreg.hitNote(hitreg.getTimingWindow(note, input.time), note);
+					break;
+				}
 		}
 	};
 	/**
