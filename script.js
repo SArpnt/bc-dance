@@ -30,8 +30,8 @@ let draw;
 		hitreg.calculateMissed(sec);
 
 		tempShape.graphics.clear();
-		tempShape.graphics.beginFill("#000000").drawRect(0, 0, 640, 480); // temporary background
-		tempShape.graphics.beginFill("#666666");
+		tempShape.graphics.beginFill("#000").drawRect(0, 0, 640, 480); // temporary background
+		tempShape.graphics.beginFill("#666");
 		for ( // bar lines
 			let i = Math.ceil(beat / 4) * 4;
 			i < (Math.ceil(beat / 4) + 8) * 4;

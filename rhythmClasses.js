@@ -164,17 +164,21 @@ class AudioTime extends DynamicTime {
 		if (audio != undefined) {
 			this.muted = audio.muted;
 			this.audio = audio;
+		} else {
+			this.muted = false;
+			this.audio = new Audio;
 		}
 	}
 
 	get audio() { return this._audio; }
 	set audio(audio) {
-		if (typeof audio == 'string')
-			audio = new Audio(audio);
-		this._audio = audio;
+		if (audio instanceof Audio)
+			this._audio = audio;
+		else
+			this._audio.src = audio;
 
-		if (audio.paused)
-			audio.muted = true;
+		if (this._audio.paused)
+			this._audio.muted = true;
 		else
 			start();
 	}
@@ -182,7 +186,7 @@ class AudioTime extends DynamicTime {
 	start(autoCheck = true) {
 		this.audio.muted = this.muted;
 		if (this.audio.paused)
-			this.audio.play()
+			this.audio.play();
 
 		if (autoCheck)
 			this._autoEventChecker = setInterval(_ => this._checkEvents(), DynamicTime.eventCheckRate);
@@ -197,7 +201,7 @@ class AudioTime extends DynamicTime {
 		return Time.convertTime('sec', unit, this.audio.currentTime - this.offset);
 	}
 	setTime(unit, value) {
-		console.warn('aaaa')
+		console.warn('aaaa');
 		super.setTime(unit, value);
 		this.audio.currentTime = this._units.sec + this.offset;
 		throw 'AAAA';
@@ -207,7 +211,7 @@ class AudioTime extends DynamicTime {
 		return !this.audio.paused;
 	}
 	get startTime() {
-		return this.audio;
+		return new Time('sec', performance.now() / 1e3 - this.sec);
 	}
 }
 

@@ -42,7 +42,7 @@ let hitreg = new function HitregNamespace() {
 		if (end instanceof Time)
 			end = end.sec;
 		else if (typeof end != 'number')
-			start = currentTime + hitreg.timingWindows.miss.sec;
+			end = currentTime + hitreg.timingWindows.miss.sec;
 
 		return arr.filter(n =>
 			(startInclu ? n.sec >= start : n.sec > start) &&
@@ -52,16 +52,22 @@ let hitreg = new function HitregNamespace() {
 	/**
 	 * Checks if any notes have been completely missed
 	 * @param {number|Time} [currentTime]
+	 * @param {number} [setNTB]
 	 */
-	hitreg.calculateMissed = function (currentTime = songTime.sec) {
+	hitreg.calculateMissed = function (currentTime = songTime.sec, setNTB) {
 		if (currentTime instanceof Time)
 			currentTime = currentTime.sec;
 
 		let lastNTB = hitreg.ntb;
-		updateNTB(currentTime);
-		/*let missed = hitreg.getNoteRange(0, lastNTB, hitreg.ntb, false, true);
-		for (let note of missed)
-			hitreg.hitNote(note, 'miss');*/
+
+		if (setNTB == undefined)
+			updateNTB(currentTime);
+		else
+			hitreg.ntb = setNTB;
+
+		hitreg.getNoteRange(0, lastNTB, hitreg.ntb, false, true)
+			.filter(n => !n.hit)
+			.forEach(n => hitreg.hitNote('miss', n));
 	};
 	/**
 	 * @param {Object} input
@@ -75,7 +81,7 @@ let hitreg = new function HitregNamespace() {
 
 		for (let note of hitreg.getNoteRange(input.time)) {
 			if (input.column == note.column) {
-				hitreg.hitNote(note, hitreg.getTimingWindow(note, input.time));
+				hitreg.hitNote(hitreg.getTimingWindow(note, input.time), note);
 				break;
 			}
 		}
@@ -92,24 +98,26 @@ let hitreg = new function HitregNamespace() {
 
 		let hdt = Math.abs(inputTime - note.sec);
 		for (let i in hitreg.timingWindows)
-			if (hdt <= (hitreg.timingWindows[i].sec ?? 0))
+			if (hdt > (hitreg.timingWindows[i].sec ?? -Infinity))
 				return i;
 	};
 	/**
 	 * Hits or misses a note
-	 * @param {Note} note
-	 * @param {string} [tw] Timing window
+	 * @param {string} tw Timing window
+	 * @param {Note} [note]
 	 * @param {bool} [doHit]
 	 * @param {bool} [doMiss]
 	 */
-	hitreg.hitNote = function (note, tw, doHit = true, doMiss = true) {
+	hitreg.hitNote = function (tw, note, doHit = true, doMiss = true) {
 		if (typeof tw == 'string')
 			tw = hitreg.timingWindows[tw];
 		if (tw.hit) {
 			if (doHit) { // hit
 				console.log("%c Hit note:", "color: green", note, tw);
-				note.hit = true;
-				hitreg.ntb = note.sec;
+				if (note) {
+					note.hit = true;
+					hitreg.calculateMissed(undefined, note.sec);
+				}
 			}
 		} else
 			if (doMiss) { // miss
