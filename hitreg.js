@@ -2,9 +2,9 @@ let hitreg = new function HitregNamespace() {
 	let hitreg = this;
 
 	hitreg.timingWindows = {
-		miss: { name: "Miss", hit: false, sec: .2 }, // miss is hardcoded, name can't be changed
-		bad: { name: "Bad", hit: true, sec: .125 },
-		good: { name: "Good", hit: true, sec: .05 },
+		miss: { name: "Miss", hit: false, sec: .3 }, // widest timing window key is hardcoded as miss, don't change
+		bad: { name: "Bad", hit: true, sec: .2 },
+		good: { name: "Good", hit: true, sec: .1 },
 		perfect: { name: "Perfect", hit: true },
 	};
 
